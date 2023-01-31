@@ -1,3 +1,5 @@
+// Code for google sheets updating
+
 var googleSheetId = ""
 
 //Get the date asked for
