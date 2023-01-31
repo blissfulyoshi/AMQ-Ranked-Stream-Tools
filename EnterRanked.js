@@ -87,15 +87,15 @@ function updateTwitchData() {
     //sketchy way to calculate ranked dates
     var offset = -7;
     var shouldBeSafeTimeForRankedDate = new Date( new Date().getTime() + offset * 3600 * 1000);
-    var rankedLocation = "Eastern"
+    var rankedLocation = "East"
     if (shouldBeSafeTimeForRankedDate.getUTCHours() > 10) {
         rankedLocation = "Central"
     }
     if (shouldBeSafeTimeForRankedDate.getUTCHours() > 15) {
-        rankedLocation = "Western"
+        rankedLocation = "West"
     }
     var formattedRankedDate = shouldBeSafeTimeForRankedDate.toISOString().split('T')[0];
-    var streamTitle = 'Ranked AMQ ' + rankedLocation + ' ' + formattedRankedDate + ' (no mic)';
+    var streamTitle = 'AMQ Expert Ranked: ' + rankedLocation + ' ' + formattedRankedDate + ' (no mic)';
 
     //Update Twitch information
 	var data = {
