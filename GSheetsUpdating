@@ -1,0 +1,126 @@
+var googleSheetId = ""
+
+//Get the date asked for
+function doGet(e){
+  if (e.parameter.videoId) {
+    insertRecordingUrl(e.parameter.date, e.parameter.region, e.parameter.videoId)
+    return ContentService.createTextOutput("Input Successful")
+  }
+  else {
+    textOutput = getRankedRecordUrl(e.parameter.date, e.parameter.region)
+    return ContentService.createTextOutput(textOutput)
+  }
+}
+
+function test() {
+  var result = getRankedRecordUrl("2021-10-05", "Central")
+  console.log(result)
+  // should get the output https://gist.github.com/ae82105ae7525f4bc364dff10f25e1a6 if recording is blank
+  // otherwise, nothing otherwise
+}
+
+function test2() {
+  insertRecordingUrl("2021-10-26", "Eastern", "5iG442EhrYg")
+  //should insert the YT link into 2021-10-26, column 4
+}
+
+function test3() {
+  var result = getRankedRecordUrl("2021-11-29", "Western")
+  console.log(result)
+  // should get the output 	https://gist.github.com/3127b5d2b287f5a53bde375128ba137d if recording is blank
+  // otherwise, nothing otherwise
+}
+
+// Get the url of the ranked recording
+function getRankedRecordUrl(rankedDate, region) {
+  var regionColumn = getRegionColumn(region);
+  var recordingUrl = getRankedCell(rankedDate, regionColumn + 1).getValue();
+  if (!recordingUrl) {
+    return getRankedCell(rankedDate, regionColumn).getValue();
+  }
+  else {
+    return '';
+  }
+}
+
+// Insert the recording url into the ranked column
+function insertRecordingUrl(rankedDate, region, recordingId) {
+  var regionColumn = getRegionColumn(region) + 1
+  getRankedCell(rankedDate, regionColumn).setValue('https://youtu.be/' + recordingId)
+}
+
+// Get the cell of the ranked data specified
+function getRankedCell(rankedDate, regionColumn) {
+  var ss= SpreadsheetApp.openById(googleSheetId)
+  var processedDate = new Date(rankedDate + "T10:00:00")
+  var specifiedSheetName = processedDate.getFullYear() + " S" + (processedDate.getMonth() + 1)
+  var sheet = ss.getSheetByName(specifiedSheetName)
+  var dateRow = getDateRow(sheet, processedDate)
+
+  // scan the date column to find the matching date
+  // if the date can't be found check the next month
+  // If the date can't be found in the next month return nothing
+  if (dateRow === -1) {
+    // Sheet is 1 indexed, so to get the next month, minus 2
+    // Not going to error check because personal script
+    sheet = ss.getSheets()[sheet.getIndex() - 2]
+    dateRow = getDateRow(sheet, processedDate)
+  }
+
+  return sheet.getRange(dateRow, regionColumn)
+}
+
+// Get the row associated with the date
+function getDateRow(selectedSheet, processedDate) {
+  var dateCells = selectedSheet.getRange(3, 2, 34).getValues();
+  for (var i = 0; i < dateCells.length; i++) {
+    // Find the matching day
+    if (dateCells[i][0] && processedDate.getDate() === dateCells[i][0].getDate() && processedDate.getMonth() === dateCells[i][0].getMonth()) {
+      return 3+i
+    }
+  }
+
+  return -1;
+}
+
+// Get the column associated with the summary for the region
+function getRegionColumn(region) {
+  if (region === "Eastern") {
+    return 3
+  }
+  else if (region === "Central") {
+    return 5
+  }
+  else { //Western
+    return 7
+  }
+}
+
+function doPost(e) {
+  var ss= SpreadsheetApp.openById(googleSheetId)
+  var sheet = ss.getSheets()[0]
+  var startingDate = sheet.getRange(3,2).getValue()
+  
+  //sketchy way to calculate which region the ranked game came from 
+  var columnToSaveIn = 3 // for eastern
+  var offset = -7;
+  var shouldBeSafeTimeForRankedDate = new Date( new Date().getTime() + offset * 3600 * 1000);
+  if (shouldBeSafeTimeForRankedDate.getUTCHours() > 10 ) {
+    columnToSaveIn = 5
+  }
+  if (shouldBeSafeTimeForRankedDate.getUTCHours() > 15 ) {
+    columnToSaveIn = 7
+  }
+  
+  // calculate what day the ranked game should be saved on
+  // since we're comparing against local time zone now, do not use the date from before
+  var differenceInDates = Math.abs(new Date() - startingDate)
+  var dayDifference = Math.floor(differenceInDates / (24 * 60 * 60 * 1000))
+  var rowToSaveIn = 3 + dayDifference
+  
+  Logger.log(e)
+  if (e && e.parameter && e.parameter.jsonUrl) {
+    sheet.getRange(rowToSaveIn,columnToSaveIn).setValue(e.parameter.jsonUrl)
+  }
+  return ContentService.createTextOutput(JSON.stringify(e))
+}
